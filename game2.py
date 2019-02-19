@@ -482,10 +482,11 @@ while user_in != 'q':
 		else:
 			print('select [c]olour or [d]ots')
 			user_in = input()
-
-	auto(game)
-	game.display();
-	metaStats()
+	
+	### Pre inputs game moves
+	#auto(game)
+	#game.display();
+	#metaStats()
 	
 	# GAME LOOP
 	while user_in != 'q':
