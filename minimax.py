@@ -1,6 +1,5 @@
 """
 TODO:: 
-- caclulate heuristic value of given board state based on demo requirements
 - interface between this and other datastructure
 - pretty print to demo format and write to file
 - recycled moves
@@ -371,9 +370,42 @@ def minMax(depth, parent_index, show_stats=False):
 		node_value = TREE_ARRAY[parent_index]
 		return node_value
 
+def interfaceBoard(board_state):
+	return board_state
+
+def getNextMove(board_state, show_trace=False, show_stats=False):
+	ROOT_BOARD = interfaceBoard(board_state)
+	legal_cells = getLegalCells(ROOT_BOARD)
+	buildTree(0, 0, ROOT_BOARD, legal_cells)
+
+	if show_trace == True:
+		print(printTree(0,0))
+
+	root_score = minMax(0,0,show_stats)
+	
+	if show_stats == True:
+		# meta stats
+		print('',end="\n**************\n")
+		print('Dimensions', end=': ')
+		print(str(WIDTH)+' '+str(HEIGHT))
+		print('Board Cells', end=': ')
+		print(str(WIDTH * HEIGHT))
+		print('Depth', end=': ')
+		print(str(TREE_HEIGHT))
+		print('Children per node', end=': ')
+		print(NUM_CHILDREN)
+		print('Max nodes', end=': ')
+		print(MAX_NODES)
+		print('Max leaves', end=': ')
+		print(MAX_LEAVES)
+		print('Parent Nodes', end=': ')
+		print(MAX_NODES - MAX_LEAVES)
+		print('Length of tree', end=': ')
+		print(len(TREE_ARRAY))
+	return root_score
 
 print('\n*****MIN MAX TESTS****')
-
+test_board = []
 for n in range(WIDTH * HEIGHT):
 	cell = {
 		"colour": '',
@@ -381,39 +413,7 @@ for n in range(WIDTH * HEIGHT):
 		"link": '',
 		"link_direction": ''
 	}
-	ROOT_BOARD.append(cell)
-
-#for cell in ROOT_BOARD:
-# print(cell)
+	test_board.append(cell)
 
 # populate tree
-buildTree( 0, 0, ROOT_BOARD, getLegalCells(ROOT_BOARD))
-
-# pretty print tree
-# printTree(0,0)
-
-# view raw list
-print(TREE_ARRAY)
-
-# value of minimax
-# True == print tree minimax tree calc
-print('Root score: '+str( minMax(0,0,True) ))
-
-# meta stats
-print('',end="\n**************\n")
-print('Dimensions', end=': ')
-print(str(WIDTH)+' '+str(HEIGHT))
-print('Board Cells', end=': ')
-print(str(WIDTH * HEIGHT))
-print('Depth', end=': ')
-print(str(TREE_HEIGHT))
-print('Children per node', end=': ')
-print(NUM_CHILDREN)
-print('Max nodes', end=': ')
-print(MAX_NODES)
-print('Max leaves', end=': ')
-print(MAX_LEAVES)
-print('Parent Nodes', end=': ')
-print(MAX_NODES - MAX_LEAVES)
-print('Length of tree', end=': ')
-print(len(TREE_ARRAY))
+getNextMove(test_board, True, True)
