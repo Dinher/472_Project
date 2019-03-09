@@ -1,25 +1,11 @@
 """
-*Make sure max player is set before running minmax - defaults to colour*
-
-# each cell of the board array is a cell object with attributes
-self.colour = 	'R' or 'W'					
-self.dot = 		'F' or 'C'				
-self.link = 	cell_index + 1 or cell_index + board_width
-self.link_direction = directional symbol, set but unused here
-
-color
-symbol
-
 TODO:: 
-- create array of legal cells from root board 
-- hardcode/create function to return sample heuristical value
-- caclulate heuristic value of given board state
-- add heuristical value to leaf node
-- turn into class
+- caclulate heuristic value of given board state based on demo requirements
+- interface between this and other datastructure
+- pretty print to demo format and write to file
+- recycled moves
 """
-
-from game2 import Game
-import math, random
+import math, random, copy
 
 ROTATION = {
 	1: {
@@ -65,16 +51,16 @@ ROTATION = {
 }
 COLUMNS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
-WIDTH = 3
-HEIGHT = 5
+WIDTH = 2
+HEIGHT = 12
 GRID = []																					# 1D board representation - each element is a cell object
 MAX_PLAYER = 'colour'
 MIN_PLAYER = 'dot'
-TREE_HEIGHT = 3 																			# depth/height, doesn't include root node
-NUM_CHILDREN = len(ROTATION) * WIDTH														# 8 rotations * board width
+TREE_HEIGHT = 4																				# depth/height, doesn't include root node
+NUM_CHILDREN = len(ROTATION) * WIDTH														# 8 rotations * maximum number of legal cells
 MAX_LEAVES = int(math.pow(NUM_CHILDREN, TREE_HEIGHT))										# number of nodes with a value
 MAX_NODES = int((math.pow(NUM_CHILDREN, TREE_HEIGHT + 1) - 1 ) / ( NUM_CHILDREN - 1 ))		# total calculated nodes of tree
-TREE_ARRAY = [None] * MAX_NODES																# k-ary array
+TREE_ARRAY = [0] * MAX_NODES																# k-ary array
 ROOT_BOARD = []
 
 # # #							# # #
@@ -86,24 +72,22 @@ def setBoard(board):
 
 def getLegalCells(board_state):
 	legal_cells = []
-	for cell in range(len(board_state)):
-		# max num legal cells found, stop looking
-		
-		# board index starts at 1
-		cell += 1
-		
-		if len(legal_cells) == WIDTH:
-			return legal_cells
-
+	for cell in range(len(board_state) - 1):						
 		# cell has been played, check above
 		if board_state[cell]['colour'] == 'R' or board_state[cell]['colour'] == 'W':
-			if board_state[cell + WIDTH]['colour'] != 'R' and board_state[cell + WIDTH]['colour'] != 'W':				
-				legal_cells.append(cell+WIDTH)
-		
+			if cell + WIDTH <= len(ROOT_BOARD) - 1:
+				if board_state[cell + WIDTH]['colour'] != 'R' and board_state[cell + WIDTH]['colour'] != 'W':				
+					legal_cells.append(cell+WIDTH)
+			
 		# cell is in first row
 		elif cell <= WIDTH:			
 			if board_state[cell + WIDTH]['colour'] != 'R' or board_state[cell + WIDTH]['colour'] != 'W':
-				legal_cells.append(cell)
+				legal_cells.append(cell)				
+
+	# double check to remove unnecessary values
+	for c in legal_cells:
+		if (c + WIDTH) in legal_cells:
+			legal_cells.remove(c + WIDTH)
 
 	return legal_cells
 
@@ -115,7 +99,7 @@ def setHeight(height):
 
 # missing recycled move code
 def addMoveToBoard(parent_board, move, legal_cells):
-		board = parent_board
+		board = copy.deepcopy(parent_board)
 		column = move['column']
 		row = move['row']
 		rotation = move['rotation']
@@ -129,23 +113,23 @@ def addMoveToBoard(parent_board, move, legal_cells):
 		"""
 
 		# check bounds
-		# This required for the AI?
-		if(column > WIDTH or column < 1 or row > HEIGHT or row < 1):
-			#print('Move out of bounds')
+		if(column > WIDTH or column < 0 or row > HEIGHT or row < 0):
+			#print('[Illegal] Move out of bounds')
 			return False
 
 		# determine placement in array
-		index = (column - 1) + ((row - 1) * WIDTH)
+		index = column + (row * WIDTH)
 
 		# check empty cell
 		if(board[index]['colour'] == 'R' or board[index]['colour'] == 'W'):
-			#print('Cell Occupied')
+			#print('[Illegal] Cell Occupied')
 			return False
 
-		# check if move is 1st row or over other tiles
-		if((index + 1) not in legal_cells):
-			#print('Cell overhang')
+		# if in legal cells
+		if( index not in legal_cells):
+			#print('[Illegal] not in legal cells')
 			return False
+
 
 		# Get cell attributes of rotation type
 		C1 = ROTATION[rotation]['C1']
@@ -156,15 +140,16 @@ def addMoveToBoard(parent_board, move, legal_cells):
 		if (link is	'up'):
 			link = index + WIDTH
 			if(link >= (WIDTH * HEIGHT)):				
-				#print('Link can\'t play')
+				#print('[Illegal] Link above can\'t play')
 				return False
 		else:
 			link = index + 1
-			if(link >= (WIDTH * row)):
-				#print('LINK can\' play')
+			if(link >= (WIDTH * (row+1))):
+				#print('[Illegal] LINK out of row bounds')
 				return False
 
-			elif((link+1)not in legal_cells):
+			elif( ( link )not in legal_cells):		# prev link + 1?
+				#print('[Illegal] link right not legal')
 				return False
 
 		# updateLegalCells(legal_cells, index, link)
@@ -192,11 +177,13 @@ def displayBoard(board):
 	string = ''
 	# board
 	for i in range(len(board)): 
-		string += "|"+ board[i].link_direction + str(board[i].colour) + str(board[i].dot) + board[i].link_direction +"|" 			
+		link_direction = '.' if str(board[i]['link_direction']) == '' else str(board[i]['link_direction'])
+		colour = '.' if str(board[i]['colour']) == '' else str(board[i]['colour'])
+		dot = '.' if str(board[i]['dot']) == '' else str(board[i]['dot'])
+		string += "|"+ link_direction + colour + dot + link_direction +"|" 			
 		
 		# newline at width length
 		if(math.ceil(i % WIDTH) is WIDTH-1):
-			# print(str(display_height))
 			string += str(display_height)
 			output.append(string)
 			string = ''
@@ -209,32 +196,8 @@ def displayBoard(board):
 
 	# column names 
 	for i in range(WIDTH):
-		#print(' '+COLUMNS[i]+'  ',end='')
 		print('  '+ COLUMNS[i] +'   ',end='')
 	print('')
-
-def updateLegalCells(legal_cells, index, link):
-	legal_cells.remove(index + 1)				# remove previous index from list
-	legal_cells.append(index + WIDTH + 1) 		# cell above is now legal, add to list
-	legal_cells.remove(link + 1)				# remove previous link from list
-	legal_cells.append(link + WIDTH + 1) 		# cell above is now legal, add to list
-	legal_cells.sort()
-
-	# clear score data if not a legal cells
-	TEMP_SCORES = legal_cell_score.copy()
-	for cell in TEMP_SCORES:
-		if cell not in legal_cells:
-			legal_cell_score.pop(str(cell),None)
-	
-	# add new legal cells to scores
-	for cell in legal_cells:	
-		if str(cell) not in legal_cell_score: 
-			legal_cell_score[str(cell)] = {
-				'R': 0,
-				'W': 0,
-				'F': 0,
-				'C': 0
-			}
 
 
 # # #			# # #
@@ -253,70 +216,73 @@ def setMaxPlayer(player_type):
 
 # TODO:: return heuristical value based on test heuristic
 def calculateHeuristic(board_state):
-	heuristic = random.randint(-10,10)
-	"""
-	r = 0
-	w = 0 
-	f = 0
-	c = 0
-	for cell in board_state:
-		if cell['colour'] == 'R':
-			r += 1
-		if cell['colour'] == 'W':
-			w += 2
-		if cell['dot'] == 'F':
-			f -= 1
-		if cell['dot'] == 'C':
-			c -= 2
-	return r
-	"""
+	heuristic = random.randint(-100,100)
+	
+	# # #
+	# # # enter heuristic calc here
+	# # # 
+
 	return heuristic
 	
 # Creates a 1D k-ary tree based on TREE_HEIGHT and NUM_CHILDREN per node
+# Tree is build DEPTH FIRST
 def buildTree(depth, parent_index, board_state = False, legal_cells = False):
 	# not at leaf node	
-	if depth is not TREE_HEIGHT:														# if depth is not TREE_HEIGHT and board_state is not False:						
+	if depth is not TREE_HEIGHT:						
 
-		# contents of parent node - placeholder value before minmax algorithm		 
-		TREE_ARRAY[parent_index] = math.inf		
+		# contents of parent node - 0 is not appropriate placeholder	 
+		TREE_ARRAY[parent_index] = 0		
 		
 		# testing algorithm
+		# Uncomment this and comment out production section
 		"""
 		for c in range(NUM_CHILDREN):
 			child_index = NUM_CHILDREN * parent_index + c + 1
 
 			# go to child node
 			buildTree(depth + 1, child_index)
-
+		
 		"""
 		### production algorithm 
 		child_index_count = 0
-		for index in legal_cells:														# 8 rotations * 8 legal cells = 64 children per board state   O_O
+		for index in legal_cells:														
 			for r in ROTATION:
 				child_index = NUM_CHILDREN * parent_index + child_index_count + 1
 
 				new_move = {
 					'column' : index % WIDTH,
-					'row' : math.ceil(index/WIDTH),
+					'row' : math.floor( index / WIDTH),
 					'rotation' : r
 				}
+				
+				# returns new board if legal, False bool if illegal
+				new_board = addMoveToBoard(board_state, new_move, legal_cells)			
 
-				# print(str(index)+' :: '+str(new_move))
-				new_board = addMoveToBoard(board_state, new_move, legal_cells)
-				if new_board != False:												# ie. move is legal
+				# display board after legal play
+				if new_board is not False:						
+					print('playing move: '+str(new_move))					
+					#print('child board')
+					displayBoard(new_board)
+
+				if new_board != False:													
 					child_index_count += 1
 					new_legal_cells = getLegalCells(new_board)
+
+					# immediately follow child subtree						
 					buildTree( depth + 1, child_index, new_board, new_legal_cells )
-				else:
-					# subtree is unavailable
-					# make this cell value None? or continue tree?
-					child_index_count += 1				
-					buildTree(depth + 1, child_index, board_state, legal_cells)
-					# TREE_ARRAY[parent_index] = 0
+				
+				# make subtree unavailable
+				else:										
+					child_index_count += 1			
+
+					# buildTree(depth + 1, child_index, copy.deepcopy(board_state), copy.deepcopy(legal_cells))
+					
+					# 0 is not an appropriate placeholder
+					TREE_ARRAY[child_index] = 0																		
+	
 	# at leaf node 
 	else:
 		heuristic = calculateHeuristic(board_state)
-		#print('Leaf heuristic: '+str(heuristic))
 		TREE_ARRAY[parent_index] = heuristic
 		
 
@@ -325,19 +291,20 @@ def printTree(depth, parent_index):
 	if depth is not TREE_HEIGHT:
 		for k in range(depth):
 			print('\t',end='')
-		print('Parent: '+str(TREE_ARRAY[parent_index]))
+		print('Parent['+str(parent_index)+']: '+str(TREE_ARRAY[parent_index]))
 		for c in range(NUM_CHILDREN):
 			for i in range(depth):
 				print('\t',end='')
 			child_index = NUM_CHILDREN * parent_index + c + 1
-			print('\tChild: '+str(TREE_ARRAY[child_index]))
+			print('\tChild['+str(child_index)+']: '+str(TREE_ARRAY[child_index]))
 			printTree(depth + 1, child_index)
 	else:
 		# nothing to do
 		return 
 
 # returns value of leaf root node
-def minMax(depth, parent_index):
+def minMax(depth, parent_index, show_stats=False):
+	stats = ""
 	if depth is not TREE_HEIGHT:
 		
 		# odd == MIN_PLAYER, (1,3,5...)
@@ -347,8 +314,14 @@ def minMax(depth, parent_index):
 			# check value of each child
 			for c in range(NUM_CHILDREN):
 				child_index = NUM_CHILDREN * parent_index + c + 1
-				node_value = min(node_value, minMax(depth + 1, child_index))
-			print('(-) for node ['+str(parent_index)+'] = ['+str(node_value)+']')
+				node_value = min(node_value, minMax(depth + 1, child_index, show_stats))
+
+			for n in range(depth):
+				stats += '\t'
+			stats += '(-) for node ['+str(parent_index)+'] = ['+str(node_value)+']'
+			if show_stats:
+				print(stats)
+
 			return node_value
 
 		# even == MAX_PLAYER, (0,2,4...)
@@ -358,81 +331,23 @@ def minMax(depth, parent_index):
 			# check value of each child
 			for c in range(NUM_CHILDREN):
 				child_index = NUM_CHILDREN * parent_index + c + 1
-				node_value = max(node_value, minMax(depth + 1, child_index))
-			print('(+) for node ['+str(parent_index)+'] = ['+str(node_value)+']')
+				node_value = max(node_value, minMax(depth + 1, child_index, show_stats))
+			
+			for n in range(depth):
+				stats += '\t'
+			stats += '(+) for node ['+str(parent_index)+'] = ['+str(node_value)+']'
+			
+			if show_stats:
+				print(stats)
+				
 			return node_value
 
 	# terminal node, return value
-	else:
-		return TREE_ARRAY[parent_index]
+	else:		
+		node_value = TREE_ARRAY[parent_index]
+		return node_value
 
 
-
-# ### Tests
-# g = Game(WIDTH, HEIGHT, 'colour')
-
-# g.move(1,1,1)
-# g.display()
-
-# grid = g.getGrid()
-
-# legal_cells =g.getLegalCells()
-# legal_cell_score = g.getLegalCellScore()
-# player_scores = g.getPlayerScores()
-
-# new_move = {
-# 	'column' : 3,
-# 	'row' : 1,
-# 	'rotation' : 1
-# }
-
-# # new_board = addMoveToBoard(grid, new_move, legal_cells)
-# if new_board is not False:
-# 	displayBoard(new_board)
-# print("\nLegal Cells:")
-# print(legal_cells)
-# print()
-# g.showGrid()
-"""
-
-test_board = []
-for n in range(WIDTH * HEIGHT):
-	cell = {
-		'colour':'.',
-		'dot':'.',
-		'link':'.',
-		'link_direction':'.'
-	}
-	test_board.append(cell)
-
-cell_1 = {
-	'colour':'R',
-	'dot':'F',
-	'link':'1',
-	'link_direction':'.'
-}
-cell_2 = {
-	'colour':'W',
-	'dot':'C',
-	'link':'2',
-	'link_direction':'.'
-}
-
-test_board[1] = cell_1
-test_board[2] = cell_1
-test_board[3] = cell_1
-test_board[4] = cell_1
-test_board[5] = cell_2
-test_board[6] = cell_1
-test_board[7] = cell_1
-test_board[8] = cell_1
-test_board[9] = cell_1
-test_board[10] = cell_2
-
-print(test_board)
-print(getLegalCells(test_board))
-
-"""
 print('\n*****MIN MAX TESTS****')
 
 for n in range(WIDTH * HEIGHT):
@@ -443,26 +358,38 @@ for n in range(WIDTH * HEIGHT):
 		"link_direction": ''
 	}
 	ROOT_BOARD.append(cell)
-print(ROOT_BOARD)
-# populate tree
-#buildTree(0,0) #test method only
-# buildTree( 0, 0, ROOT_BOARD, getLegalCells(ROOT_BOARD))
 
-# meta stats
-print('Max nodes')
-print(MAX_NODES)
-print('Max leaves')
-print(MAX_LEAVES)
-print('Parent Nodes')
-print(MAX_NODES - MAX_LEAVES)
-print('length of list')
-print(len(TREE_ARRAY))
+#for cell in ROOT_BOARD:
+# print(cell)
+
+# populate tree
+buildTree( 0, 0, ROOT_BOARD, getLegalCells(ROOT_BOARD))
 
 # pretty print tree
-#printTree(0,0)
+# printTree(0,0)
 
 # view raw list
-# print(TREE_ARRAY)
+print(TREE_ARRAY)
 
-# value of root node
-# print('Root score: '+str(minMax(0,0)))
+# value of minimax
+# True == print tree minimax tree calc
+print('Root score: '+str( minMax(0,0,True) ))
+
+# meta stats
+print('',end="\n**************\n")
+print('Dimensions', end=': ')
+print(str(WIDTH)+' '+str(HEIGHT))
+print('Board Cells', end=': ')
+print(str(WIDTH * HEIGHT))
+print('Depth', end=': ')
+print(str(TREE_HEIGHT))
+print('Children per node', end=': ')
+print(NUM_CHILDREN)
+print('Max nodes', end=': ')
+print(MAX_NODES)
+print('Max leaves', end=': ')
+print(MAX_LEAVES)
+print('Parent Nodes', end=': ')
+print(MAX_NODES - MAX_LEAVES)
+print('Length of tree', end=': ')
+print(len(TREE_ARRAY))
