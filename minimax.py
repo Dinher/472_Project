@@ -56,11 +56,11 @@ HEIGHT = 12
 GRID = []																					# 1D board representation - each element is a cell object
 MAX_PLAYER = 'colour'
 MIN_PLAYER = 'dot'
-TREE_HEIGHT = 4																				# depth/height, doesn't include root node
+TREE_HEIGHT = 3																			# depth/height, doesn't include root node
 NUM_CHILDREN = len(ROTATION) * WIDTH														# 8 rotations * maximum number of legal cells
 MAX_LEAVES = int(math.pow(NUM_CHILDREN, TREE_HEIGHT))										# number of nodes with a value
 MAX_NODES = int((math.pow(NUM_CHILDREN, TREE_HEIGHT + 1) - 1 ) / ( NUM_CHILDREN - 1 ))		# total calculated nodes of tree
-TREE_ARRAY = [0] * MAX_NODES																# k-ary array
+TREE_ARRAY = [math.nan] * MAX_NODES																# k-ary array
 ROOT_BOARD = []
 
 # # #							# # #
@@ -216,13 +216,26 @@ def setMaxPlayer(player_type):
 
 # TODO:: return heuristical value based on test heuristic
 def calculateHeuristic(board_state):
-	heuristic = random.randint(-100,100)
-	
-	# # #
-	# # # enter heuristic calc here
-	# # # 
+	score = 0
 
-	return heuristic
+	for index,cell in enumerate(board_state):
+		column = index % (WIDTH) +1
+		row = ((int) (index /(WIDTH)))
+		coordinates = int(str(row) + str(column))
+		if cell['colour'] == 'R':
+			if cell['dot'] == 'C':
+				score -= 1.5*coordinates
+			if cell['dot'] == 'F':
+				score -= 2*coordinates
+		elif cell['colour'] == 'W':
+			if cell['dot'] == 'C':
+				score += coordinates
+			if cell['dot'] == 'F':
+				score += 3*coordinates
+		else:
+			continue
+
+	return score
 	
 # Creates a 1D k-ary tree based on TREE_HEIGHT and NUM_CHILDREN per node
 # Tree is build DEPTH FIRST
@@ -243,6 +256,7 @@ def buildTree(depth, parent_index, board_state = False, legal_cells = False):
 			buildTree(depth + 1, child_index)
 		
 		"""
+
 		### production algorithm 
 		child_index_count = 0
 		for index in legal_cells:														
@@ -259,10 +273,12 @@ def buildTree(depth, parent_index, board_state = False, legal_cells = False):
 				new_board = addMoveToBoard(board_state, new_move, legal_cells)			
 
 				# display board after legal play
+				"""
 				if new_board is not False:						
 					print('playing move: '+str(new_move))					
 					#print('child board')
 					displayBoard(new_board)
+				"""
 
 				if new_board != False:													
 					child_index_count += 1
@@ -313,8 +329,12 @@ def minMax(depth, parent_index, show_stats=False):
 			
 			# check value of each child
 			for c in range(NUM_CHILDREN):
+				
 				child_index = NUM_CHILDREN * parent_index + c + 1
-				node_value = min(node_value, minMax(depth + 1, child_index, show_stats))
+				child_value = minMax(depth + 1, child_index, show_stats)
+				if math.isinf(node_value) and not math.isnan(child_value):
+					node_value = child_value
+				node_value = min(node_value, child_value)
 
 			for n in range(depth):
 				stats += '\t'
@@ -329,10 +349,14 @@ def minMax(depth, parent_index, show_stats=False):
 			node_value = -math.inf
 			
 			# check value of each child
-			for c in range(NUM_CHILDREN):
+			for c in range(NUM_CHILDREN):			
+				
 				child_index = NUM_CHILDREN * parent_index + c + 1
-				node_value = max(node_value, minMax(depth + 1, child_index, show_stats))
-			
+				child_value = minMax(depth + 1, child_index, show_stats)
+				if math.isinf(node_value) and not math.isnan(child_value):
+					node_value = child_value
+				node_value = max(node_value, child_value)			
+
 			for n in range(depth):
 				stats += '\t'
 			stats += '(+) for node ['+str(parent_index)+'] = ['+str(node_value)+']'
