@@ -50,7 +50,7 @@ ROTATION = {
 }
 COLUMNS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
-WIDTH = 8
+WIDTH = 3
 HEIGHT = 12
 GRID = []																					# 1D board representation - each element is a cell object
 MAX_PLAYER = 'colour'
@@ -484,35 +484,28 @@ def minMaxDot(depth, parent_index, show_stats=False):
 def interfaceBoard(board_state):
 	return board_state.copy()
 
-def getNextMove(board_state, player_type, show_trace=False, show_stats=False):
+def formatMove(move):
+	output = '0 '
+	output += str(move['rotation']) + ' '
+	output += COLUMNS[move['column']] + ' '
+	output += str(move['row'])
+	return output
+
+def getNextMove(board_state, player_type='colour', show_trace=False, show_stats=False):
 	root_board = interfaceBoard(board_state)
 	legal_cells = getLegalCells(root_board)
 
 	buildTree(0, 0, root_board, legal_cells)
 
-	"""
-	print('Trace heuristic (y/n)?')
-	user = input()
-	if user == 'y':
-		show_trace == True
-	"""
-
 	if show_trace == True:
 		print(traceHeuristic(0,0))
 
-	root_score = 0
-	print(player_type)
-	if player_type == 'colour' or player_type == 'color':
-		root_score = minMax(0, 0, show_stats)
+	# output is a tuple - (root heuristic value, root move to play)
+	minmax_output = ()
+	if player_type == 'colour' or player_type == 'color' or player_type == 1:
+		minmax_output = minMax(0, 0, show_stats)
 	else:
-		root_score = minMaxDot(0, 0, show_stats)
-		print(player_type)		
-
-	#for n in range(len(TREE_ARRAY_MOVES)):
-	#	print('['+str(n)+'] '+str(TREE_ARRAY_MOVES[n]))
-
-	# root_score = minMax(0,0,show_stats)
-	print(root_score)
+		minmax_output = minMaxDot(0, 0, show_stats)
 
 	if show_stats == True:
 		# meta stats
@@ -534,7 +527,9 @@ def getNextMove(board_state, player_type, show_trace=False, show_stats=False):
 		print('Length of tree', end=': ')
 		print(len(TREE_ARRAY))
 
-	return root_score
+	formatted_move = formatMove(minmax_output[1])
+
+	return formatted_move
 
 print('\n*****MIN MAX TESTS****')
 test_board = []
@@ -547,5 +542,5 @@ for n in range(WIDTH * HEIGHT):
 	}
 	test_board.append(cell)
 
-# populate tree
-getNextMove(test_board, 'colour', True, True)
+# populate tree - comment for production
+print(getNextMove(test_board, 'colour'))
