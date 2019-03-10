@@ -313,6 +313,21 @@ def printTree(depth, parent_index):
 		# nothing to do
 		return 
 
+def traceHeuristic(depth, parent_index):
+	"""
+	if depth is not TREE_HEIGHT:
+		for k in range(depth):
+			print('\t',end='')
+		print('Parent['+str(parent_index)+']: '+str(TREE_ARRAY[parent_index]))
+		for c in range(NUM_CHILDREN):
+			for i in range(depth):
+				print('\t',end='')
+			child_index = NUM_CHILDREN * parent_index + c + 1
+			print('\tChild['+str(child_index)+']: '+str(TREE_ARRAY[child_index]))
+			printTree(depth + 1, child_index)
+	"""
+	return
+	
 # returns value of leaf root node
 def minMax(depth, parent_index, show_stats=False):
 	stats = ""
@@ -366,24 +381,90 @@ def minMax(depth, parent_index, show_stats=False):
 		node_value = TREE_ARRAY[parent_index]
 		return node_value
 
+def minMaxDot(depth, parent_index, show_stats=False):
+	stats = ""
+	if depth is not TREE_HEIGHT:
+		
+		# odd == MIN_PLAYER, (1,3,5...)
+		if (depth % 2) > 0:	
+			node_value = -math.inf
+			
+			# check value of each child
+			for c in range(NUM_CHILDREN):			
+				
+				child_index = NUM_CHILDREN * parent_index + c + 1
+				child_value = minMaxDot(depth + 1, child_index, show_stats)
+				if math.isinf(node_value) and not math.isnan(child_value):
+					node_value = child_value
+				node_value = max(node_value, child_value)			
+
+			for n in range(depth):
+				stats += '\t'
+			stats += '(+) for node ['+str(parent_index)+'] = ['+str(node_value)+']'
+			
+			if show_stats:
+				print(stats)
+				
+			return node_value
+
+
+		# even == MAX_PLAYER, (0,2,4...)
+		else:
+			node_value = math.inf
+			
+			# check value of each child
+			for c in range(NUM_CHILDREN):
+				
+				child_index = NUM_CHILDREN * parent_index + c + 1
+				child_value = minMaxDot(depth + 1, child_index, show_stats)
+				if math.isinf(node_value) and not math.isnan(child_value):
+					node_value = child_value
+				node_value = min(node_value, child_value)
+
+			for n in range(depth):
+				stats += '\t'
+			stats += '(-) for node ['+str(parent_index)+'] = ['+str(node_value)+']'
+			if show_stats:
+				print(stats)
+
+			return node_value
+
+	# terminal node, return value
+	else:		
+		node_value = TREE_ARRAY[parent_index]
+		return node_value
+
 def interfaceBoard(board_state):
 	return board_state.copy()
 
-def getNextMove(board_state, show_trace=False, show_stats=False):
+def getNextMove(board_state, player_type, show_trace=False, show_stats=False):
 	root_board = interfaceBoard(board_state)
 	legal_cells = getLegalCells(root_board)
 
 	buildTree(0, 0, root_board, legal_cells)
 
-	if show_trace == True:
-		print(printTree(0,0))
+	"""
+	print('Trace heuristic (y/n)?')
+	user = input()
+	if user == 'y':
+		show_trace == True
+	"""
 
-	root_score = minMax(0,0,show_stats)
+	if show_trace == True:
+		print(traceHeuristic(0,0))
+
+	root_score = 0
+	if player_type == 'colour':
+		root_score = minMax(0, 0, show_stats)
+	else:
+		root_score = minMaxDot(0, 0, show_stats)
+		print(player_type)
+
+	# root_score = minMax(0,0,show_stats)
 	print(root_score)
 
 	if show_stats == True:
 		# meta stats
-		print('\n'+str(TREE_ARRAY)+'\n')
 		print('',end="\n**************\n")
 		print('Dimensions', end=': ')
 		print(str(WIDTH)+' '+str(HEIGHT))
@@ -416,6 +497,4 @@ for n in range(WIDTH * HEIGHT):
 	test_board.append(cell)
 
 # populate tree
-getNextMove(test_board)
-
-
+getNextMove(test_board, 'dot', True, True)
