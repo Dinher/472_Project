@@ -65,16 +65,12 @@ ROOT_BOARD = []
 # # #							# # #
 # # #  Board manipulation code 	# # #
 # # #							# # #	
-def setBoard(board):
-	ROOT_BOARD = board
-	setLegalCells(ROOT_BOARD)
-
 def getLegalCells(board_state):
 	legal_cells = []
 	for cell in range(len(board_state) - 1):						
 		# cell has been played, check above
 		if board_state[cell]['colour'] == 'R' or board_state[cell]['colour'] == 'W':
-			if cell + WIDTH <= len(ROOT_BOARD) - 1:
+			if cell + WIDTH <= len(board_state) - 1:
 				if board_state[cell + WIDTH]['colour'] != 'R' and board_state[cell + WIDTH]['colour'] != 'W':				
 					legal_cells.append(cell+WIDTH)
 			
@@ -293,7 +289,7 @@ def buildTree(depth, parent_index, board_state = False, legal_cells = False):
 					# buildTree(depth + 1, child_index, copy.deepcopy(board_state), copy.deepcopy(legal_cells))
 					
 					# 0 is not an appropriate placeholder
-					TREE_ARRAY[child_index] = 0																		
+					TREE_ARRAY[child_index] = math.nan															
 	
 	# at leaf node 
 	else:
@@ -371,20 +367,23 @@ def minMax(depth, parent_index, show_stats=False):
 		return node_value
 
 def interfaceBoard(board_state):
-	return board_state
+	return board_state.copy()
 
 def getNextMove(board_state, show_trace=False, show_stats=False):
-	ROOT_BOARD = interfaceBoard(board_state)
-	legal_cells = getLegalCells(ROOT_BOARD)
-	buildTree(0, 0, ROOT_BOARD, legal_cells)
+	root_board = interfaceBoard(board_state)
+	legal_cells = getLegalCells(root_board)
+
+	buildTree(0, 0, root_board, legal_cells)
 
 	if show_trace == True:
 		print(printTree(0,0))
 
 	root_score = minMax(0,0,show_stats)
-	
+	print(root_score)
+
 	if show_stats == True:
 		# meta stats
+		print('\n'+str(TREE_ARRAY)+'\n')
 		print('',end="\n**************\n")
 		print('Dimensions', end=': ')
 		print(str(WIDTH)+' '+str(HEIGHT))
@@ -402,6 +401,7 @@ def getNextMove(board_state, show_trace=False, show_stats=False):
 		print(MAX_NODES - MAX_LEAVES)
 		print('Length of tree', end=': ')
 		print(len(TREE_ARRAY))
+
 	return root_score
 
 print('\n*****MIN MAX TESTS****')
@@ -416,4 +416,6 @@ for n in range(WIDTH * HEIGHT):
 	test_board.append(cell)
 
 # populate tree
-getNextMove(test_board, True, True)
+getNextMove(test_board)
+
+
